@@ -83,6 +83,7 @@ body {
 .editor-pane {
   background-color: var(--editor-bg);
   border-right: 1px solid var(--border-color);
+  padding-right: 0px;
 }
 
 .preview-pane {
