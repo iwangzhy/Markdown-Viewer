@@ -176,7 +176,6 @@ body {
 .toolbar {
   display: flex;
   gap: 8px;
-  margin-bottom: 10px;
 }
 
 .tool-button {
@@ -415,12 +414,6 @@ a:focus {
   color: #e8eaed;
 }
 
-.toolbar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
 .stats-container {
   font-size: 0.9rem;
   color: var(--text-color);
@@ -433,4 +426,64 @@ a:focus {
 .stat-item i {
   font-size: 1rem;
   opacity: 0.8;
+}
+
+.dropzone {
+  border: 2px dashed var(--border-color);
+  border-radius: 6px;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: var(--dropzone-bg);
+  position: relative;
+}
+
+.dropzone.active {
+  border-color: var(--accent-color);
+  background-color: rgba(var(--accent-color), 0.05);
+}
+
+.dropzone p {
+  transition: transform 0.2s ease;
+}
+
+.dropzone:hover {
+  border: var(--accent-color) 2px dashed;
+}
+
+.dropzone:hover p {
+  transform: scale(1.02);
+}
+
+.close-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: none;
+  border: none;
+  color: var(--text-color);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  opacity: 0.6;
+  transition: all 0.2s ease;
+  background-color: var(--button-bg);
+  border: 1px solid var(--border-color);
+}
+
+.close-btn:hover {
+  opacity: 1;
+  background-color: var(--color-danger-fg);
+}
+
+.editor-pane {
+  overflow: hidden;
 }

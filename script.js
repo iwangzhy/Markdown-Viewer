@@ -19,6 +19,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const exportPdf = document.getElementById("export-pdf");
   const copyHtmlButton = document.getElementById("copy-html-button");
   const dropzone = document.getElementById("dropzone");
+  const closeDropzoneBtn = document.getElementById("close-dropzone");
   const toggleSyncButton = document.getElementById("toggle-sync");
   const editorPane = document.getElementById("markdown-editor");
   const previewPane = document.querySelector(".preview-pane");
@@ -540,10 +541,17 @@ function renderMarkdown() {
     dropzone.classList.remove("active");
   }
 
-  // Handle dropped files
   dropzone.addEventListener("drop", handleDrop, false);
-  dropzone.addEventListener("click", function () {
-    fileInput.click();
+  dropzone.addEventListener("click", function (e) {
+    if (e.target !== closeDropzoneBtn && !closeDropzoneBtn.contains(e.target)) {
+      fileInput.click();
+    }
+  });
+  
+  // Close dropzone button click handler
+  closeDropzoneBtn.addEventListener("click", function(e) {
+    e.stopPropagation(); 
+    dropzone.style.display = "none";
   });
 
   function handleDrop(e) {
