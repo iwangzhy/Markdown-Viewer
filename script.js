@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const exportMd = document.getElementById("export-md");
   const exportHtml = document.getElementById("export-html");
   const exportPdf = document.getElementById("export-pdf");
-  const copyHtmlButton = document.getElementById("copy-html-button");
+  const copyMarkdownButton = document.getElementById("copy-markdown-button");
   const dropzone = document.getElementById("dropzone");
   const closeDropzoneBtn = document.getElementById("close-dropzone");
   const toggleSyncButton = document.getElementById("toggle-sync");
@@ -41,7 +41,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const mobileExportMd      = document.getElementById("mobile-export-md");
   const mobileExportHtml    = document.getElementById("mobile-export-html");
   const mobileExportPdf     = document.getElementById("mobile-export-pdf");
-  const mobileCopyHtml      = document.getElementById("mobile-copy-html");
+  const mobileCopyMarkdown  = document.getElementById("mobile-copy-markdown");
   const mobileThemeToggle   = document.getElementById("mobile-theme-toggle");
 
   // Detect system color scheme preference and set initial theme
@@ -313,7 +313,7 @@ function renderMarkdown() {
   mobileExportMd.addEventListener("click", () => exportMd.click());
   mobileExportHtml.addEventListener("click", () => exportHtml.click());
   mobileExportPdf.addEventListener("click", () => exportPdf.click());
-  mobileCopyHtml.addEventListener("click", () => copyHtmlButton.click());
+  mobileCopyMarkdown.addEventListener("click", () => copyMarkdownButton.click());
   mobileThemeToggle.addEventListener("click", () => {
     themeToggle.click();
     mobileThemeToggle.innerHTML = themeToggle.innerHTML + " Toggle Dark Mode";
@@ -473,16 +473,14 @@ function renderMarkdown() {
     }
   });
 
-  // Copy HTML button with modern Clipboard API
-  copyHtmlButton.addEventListener("click", function () {
+  // Copy Markdown button with modern Clipboard API
+  copyMarkdownButton.addEventListener("click", function () {
     try {
-      const markdown = markdownEditor.value;
-      const html = marked.parse(markdown);
-      const sanitizedHtml = DOMPurify.sanitize(html);
-      copyToClipboard(sanitizedHtml);
+      const markdownText = markdownEditor.value;
+      copyToClipboard(markdownText);
     } catch (e) {
       console.error("Copy failed:", e);
-      alert("Failed to copy HTML: " + e.message);
+      alert("Failed to copy Markdown: " + e.message);
     }
   });
 
@@ -515,11 +513,11 @@ function renderMarkdown() {
   }
 
   function showCopiedMessage() {
-    const originalText = copyHtmlButton.innerHTML;
-    copyHtmlButton.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+    const originalText = copyMarkdownButton.innerHTML;
+    copyMarkdownButton.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
 
     setTimeout(() => {
-      copyHtmlButton.innerHTML = originalText;
+      copyMarkdownButton.innerHTML = originalText;
     }, 2000);
   }
 
