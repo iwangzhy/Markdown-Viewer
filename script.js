@@ -128,7 +128,7 @@ document.addEventListener("DOMContentLoaded", function () {
   \`\`\`
 
   ## Mathematical Expressions
-  Inline math: $E = mc^2$
+  Inline math: $$E = mc^2$$
 
   Block math:
   $$ \\frac{d}{dx}(e^x) = e^x $$
