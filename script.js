@@ -623,61 +623,80 @@ This is a fully client-side application. Your content never leaves your browser 
 
   exportPdf.addEventListener("click", function () {
     try {
-      if (!window.html2pdf) {
-        alert(
-          "PDF export library not loaded. Please check your internet connection and try again."
-        );
-        return;
-      }
-      const markdown = markdownEditor.value;
-      const html = marked.parse(markdown);
-      const sanitizedHtml = DOMPurify.sanitize(html);
-      const tempElement = document.createElement("div");
-      tempElement.className = "markdown-body";
-      tempElement.innerHTML = sanitizedHtml;
-      tempElement.style.padding = "20px";
-      const currentTheme = document.documentElement.getAttribute("data-theme");
-      if (currentTheme === "dark") {
-        tempElement.style.backgroundColor = "#0d1117";
-        tempElement.style.color = "#c9d1d9";
-      } else {
-        tempElement.style.backgroundColor = "#ffffff";
-        tempElement.style.color = "#24292e";
-      }
-      tempElement.style.position = "absolute";
-      tempElement.style.left = "-9999px";
-      document.body.appendChild(tempElement);
-      const options = {
-        margin: 10,
-        filename: "document.pdf",
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-      };
       const originalText = exportPdf.innerHTML;
-      exportPdf.innerHTML =
-        '<i class="bi bi-hourglass-split"></i> Generating...';
+      exportPdf.innerHTML = '<i class="bi bi-hourglass-split"></i> Generating...';
       exportPdf.disabled = true;
-      window
-        .html2pdf()
-        .from(tempElement)
-        .set(options)
-        .save()
-        .then(() => {
+
+      const contentClone = markdownPreview.cloneNode(true);
+      contentClone.className = "markdown-body pdf-export";
+
+      const currentTheme = document.documentElement.getAttribute("data-theme");
+
+      const container = document.createElement("div");
+      container.style.padding = "20px";
+      container.style.width = "800px";
+      container.style.margin = "0 auto";
+      container.style.backgroundColor = currentTheme === "dark" ? "#0d1117" : "#ffffff";
+      container.style.color = currentTheme === "dark" ? "#c9d1d9" : "#24292e";
+      container.appendChild(contentClone);
+
+      const wrapper = document.createElement("div");
+      wrapper.style.position = "absolute";
+      wrapper.style.left = "-9999px";
+      wrapper.style.top = "-9999px";
+      wrapper.appendChild(container);
+      document.body.appendChild(wrapper);
+
+      setTimeout(() => {
+        html2canvas(container, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: currentTheme === "dark" ? "#0d1117" : "#ffffff"
+        }).then(canvas => {
+          const pdf = new window.jspdf.jsPDF({
+            orientation: "portrait",
+            unit: "mm",
+            format: "a4"
+          });
+
+          const imgWidth = 210;
+          const pageHeight = 297;
+          const imgHeight = canvas.height * imgWidth / canvas.width;
+
+          const imgData = canvas.toDataURL('image/png');
+
+          let heightLeft = imgHeight;
+          let position = 0;
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+
+          while (heightLeft >= 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+          }
+
+          pdf.save('markdown-document.pdf');
+
+          document.body.removeChild(wrapper);
           exportPdf.innerHTML = originalText;
           exportPdf.disabled = false;
-          document.body.removeChild(tempElement);
-        })
-        .catch((err) => {
-          console.error("PDF generation error:", err);
-          alert("Failed to generate PDF: " + err.message);
-          document.body.removeChild(tempElement);
+        }).catch(error => {
+          console.error("HTML to Canvas error:", error);
+          alert("PDF generation failed: " + error.message);
+          document.body.removeChild(wrapper);
           exportPdf.innerHTML = originalText;
           exportPdf.disabled = false;
         });
+      }, 300);
+
     } catch (e) {
       console.error("PDF export error:", e);
       alert("PDF export failed: " + e.message);
+      exportPdf.innerHTML = originalText;
+      exportPdf.disabled = false;
     }
   });
 
