@@ -84,7 +84,7 @@ Markdown Viewer is a professional, full-featured Markdown editor and preview app
 - [MathJax](https://www.mathjax.org/) - Mathematical expressions
 - [Mermaid](https://mermaid-js.github.io/mermaid/) - Diagrams and flowcharts
 - [DOMPurify](https://github.com/cure53/DOMPurify) - HTML sanitization
-- [html2pdf.js](https://github.com/eKoopmans/html2pdf.js) - PDF generation
+- [html2canvas.js](https://github.com/niklasvh/html2canvas) + [jsPDF](https://www.npmjs.com/package/jspdf)- PDF generation
 - [FileSaver.js](https://github.com/eligrey/FileSaver.js) - File download handling
 - [JoyPixels](https://www.joypixels.com/) - Emoji support
 
