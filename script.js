@@ -24,6 +24,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const readingTimeElement = document.getElementById("reading-time");
   const wordCountElement = document.getElementById("word-count");
   const charCountElement = document.getElementById("char-count");
+  const resizer = document.getElementById("resizer");
+  const editorPaneContainer = document.querySelector(".editor-pane");
 
   const mobileMenuToggle    = document.getElementById("mobile-menu-toggle");
   const mobileMenuPanel     = document.getElementById("mobile-menu-panel");
@@ -872,6 +874,42 @@ This is a fully client-side application. Your content never leaves your browser 
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "S") {
       e.preventDefault();
       toggleSyncScrolling();
+    }
+  });
+
+  let isResizing = false;
+  let startX = 0;
+  let startWidth = 0;
+
+  resizer.addEventListener("mousedown", function (e) {
+    isResizing = true;
+    startX = e.clientX;
+    startWidth = editorPaneContainer.offsetWidth;
+    resizer.classList.add("resizing");
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  });
+
+  document.addEventListener("mousemove", function (e) {
+    if (!isResizing) return;
+
+    const dx = e.clientX - startX;
+    const newWidth = startWidth + dx;
+    const containerWidth = document.querySelector(".content-container").offsetWidth;
+    const minWidth = 200;
+    const maxWidth = containerWidth - 200 - resizer.offsetWidth;
+
+    if (newWidth >= minWidth && newWidth <= maxWidth) {
+      editorPaneContainer.style.width = newWidth + "px";
+    }
+  });
+
+  document.addEventListener("mouseup", function () {
+    if (isResizing) {
+      isResizing = false;
+      resizer.classList.remove("resizing");
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
     }
   });
 });

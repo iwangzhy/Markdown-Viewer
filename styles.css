@@ -70,10 +70,10 @@ body {
   display: flex;
   flex: 1;
   overflow: hidden;
+  position: relative;
 }
 
 .editor-pane, .preview-pane {
-  flex: 1;
   padding: 20px;
   overflow-y: auto;
   position: relative;
@@ -81,12 +81,50 @@ body {
 }
 
 .editor-pane {
+  width: 50%;
+  min-width: 200px;
   background-color: var(--editor-bg);
   border-right: 1px solid var(--border-color);
   padding-right: 0px;
 }
 
+.resizer {
+  width: 8px;
+  background-color: var(--border-color);
+  cursor: col-resize;
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease;
+}
+
+.resizer:hover,
+.resizer.resizing {
+  background-color: var(--accent-color);
+}
+
+.resizer::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 20px;
+  background-color: var(--text-color);
+  border-radius: 2px;
+  opacity: 0.5;
+}
+
+.resizer:hover::after,
+.resizer.resizing::after {
+  opacity: 1;
+  background-color: var(--accent-color);
+}
+
 .preview-pane {
+  flex: 1;
+  min-width: 200px;
   background-color: var(--preview-bg); /* Using the new variable for preview background */
 }
 
@@ -258,10 +296,15 @@ body {
       flex: none;
       height: 50%;
       border-right: none;
+      width: 100% !important;
   }
   
   .editor-pane {
       border-bottom: 1px solid var(--border-color);
+  }
+  
+  .resizer {
+      display: none;
   }
   
   .toolbar {
