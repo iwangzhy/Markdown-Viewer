@@ -71,6 +71,84 @@ document.addEventListener("DOMContentLoaded", function () {
 
   initMermaid();
 
+  const initMermaidZoom = () => {
+    console.log('initMermaidZoom called');
+    const mermaidContainers = document.querySelectorAll('.mermaid-container');
+    console.log('Found mermaid containers:', mermaidContainers.length);
+    
+    mermaidContainers.forEach((container, index) => {
+      console.log('Processing container', index);
+      const svg = container.querySelector('svg');
+      if (!svg) {
+        console.log('No SVG found in container', index);
+        return;
+      }
+      
+      console.log('Found SVG in container', index);
+      
+      let scale = 1;
+      let panning = false;
+      let pointX = 0;
+      let pointY = 0;
+      let startX = 0;
+      let startY = 0;
+      
+      svg.style.cursor = 'grab';
+      svg.style.transition = 'transform 0.1s ease-out';
+      
+      const setTransform = () => {
+        svg.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+      };
+      
+      svg.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        panning = true;
+        startX = e.clientX - pointX;
+        startY = e.clientY - pointY;
+        svg.style.cursor = 'grabbing';
+        svg.style.transition = 'none';
+      });
+      
+      svg.addEventListener('mousemove', (e) => {
+        if (!panning) return;
+        e.preventDefault();
+        pointX = e.clientX - startX;
+        pointY = e.clientY - startY;
+        setTransform();
+      });
+      
+      svg.addEventListener('mouseup', () => {
+        panning = false;
+        svg.style.cursor = 'grab';
+        svg.style.transition = 'transform 0.1s ease-out';
+      });
+      
+      svg.addEventListener('mouseleave', () => {
+        panning = false;
+        svg.style.cursor = 'grab';
+        svg.style.transition = 'transform 0.1s ease-out';
+      });
+      
+      svg.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        const newScale = scale * delta;
+        
+        if (newScale >= 0.1 && newScale <= 10) {
+          scale = newScale;
+          setTransform();
+        }
+      });
+      
+      svg.addEventListener('dblclick', () => {
+        scale = 1;
+        pointX = 0;
+        pointY = 0;
+        setTransform();
+      });
+    });
+  };
+
   const markedOptions = {
     gfm: true,
     breaks: false,
@@ -270,7 +348,7 @@ This is a fully client-side application. Your content never leaves your browser 
 
   markdownEditor.value = sampleMarkdown;
 
-  function renderMarkdown() {
+  async function renderMarkdown() {
     try {
       const markdown = markdownEditor.value;
       const html = marked.parse(markdown);
@@ -296,7 +374,11 @@ This is a fully client-side application. Your content never leaves your browser 
       initMermaid();
       
       try {
-        mermaid.init(undefined, markdownPreview.querySelectorAll('.mermaid'));
+        await mermaid.run({
+          nodes: markdownPreview.querySelectorAll('.mermaid'),
+          suppressErrors: true
+        });
+        initMermaidZoom();
       } catch (e) {
         console.warn("Mermaid rendering failed:", e);
       }
@@ -391,7 +473,7 @@ This is a fully client-side application. Your content never leaves your browser 
 
   function debouncedRender() {
     clearTimeout(markdownRenderTimeout);
-    markdownRenderTimeout = setTimeout(renderMarkdown, RENDER_DELAY);
+    markdownRenderTimeout = setTimeout(() => renderMarkdown(), RENDER_DELAY);
   }
 
   function updateDocumentStats() {

@@ -691,3 +691,19 @@ a:focus {
 .github-link i {
   font-size: 1.5rem;
 }
+
+.mermaid-container {
+  overflow: hidden;
+  position: relative;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  margin: 10px 0;
+  background-color: var(--bg-color);
+}
+
+.mermaid-container svg {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+}
