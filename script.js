@@ -6,6 +6,25 @@ document.addEventListener("DOMContentLoaded", function () {
   let isPreviewScrolling = false;
   let scrollSyncTimeout = null;
   const SCROLL_SYNC_DELAY = 10;
+  const STORAGE_KEY = 'markdown-viewer-content';
+
+  function saveToLocalStorage() {
+    try {
+      localStorage.setItem(STORAGE_KEY, markdownEditor.value);
+    } catch (e) {
+      console.warn('Failed to save to localStorage:', e);
+    }
+  }
+
+  function loadFromLocalStorage() {
+    try {
+      const savedContent = localStorage.getItem(STORAGE_KEY);
+      return savedContent;
+    } catch (e) {
+      console.warn('Failed to load from localStorage:', e);
+      return null;
+    }
+  }
 
   const markdownEditor = document.getElementById("markdown-editor");
   const markdownPreview = document.getElementById("markdown-preview");
@@ -418,7 +437,8 @@ Quote someone famous:
 
 This is a fully client-side application. Your content never leaves your browser and stays secure on your device.`;
 
-  markdownEditor.value = sampleMarkdown;
+  const savedContent = loadFromLocalStorage();
+  markdownEditor.value = savedContent || sampleMarkdown;
 
   async function renderMarkdown() {
     try {
@@ -480,6 +500,7 @@ This is a fully client-side application. Your content never leaves your browser 
     reader.onload = function(e) {
       markdownEditor.value = e.target.result;
       renderMarkdown();
+      saveToLocalStorage();
       dropzone.style.display = "none";
     };
     reader.readAsText(file);
@@ -545,7 +566,10 @@ This is a fully client-side application. Your content never leaves your browser 
 
   function debouncedRender() {
     clearTimeout(markdownRenderTimeout);
-    markdownRenderTimeout = setTimeout(() => renderMarkdown(), RENDER_DELAY);
+    markdownRenderTimeout = setTimeout(() => {
+      renderMarkdown();
+      saveToLocalStorage();
+    }, RENDER_DELAY);
   }
 
   function updateDocumentStats() {
