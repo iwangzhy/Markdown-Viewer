@@ -146,8 +146,80 @@ document.addEventListener("DOMContentLoaded", function () {
         pointY = 0;
         setTransform();
       });
+
+      const copyButton = document.createElement('button');
+      copyButton.className = 'mermaid-copy-btn';
+      copyButton.innerHTML = '<i class="bi bi-clipboard"></i> Copy as Image';
+      copyButton.title = 'Copy diagram as image to clipboard';
+      copyButton.addEventListener('click', async () => {
+        try {
+          await copySvgToClipboard(svg);
+          const originalText = copyButton.innerHTML;
+          copyButton.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+          setTimeout(() => {
+            copyButton.innerHTML = originalText;
+          }, 2000);
+        } catch (error) {
+          console.error('Failed to copy SVG:', error);
+          alert('Failed to copy diagram: ' + error.message);
+        }
+      });
+      container.appendChild(copyButton);
     });
   };
+
+  async function copySvgToClipboard(svg) {
+    const svgClone = svg.cloneNode(true);
+    svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    svgClone.setAttribute('width', svgClone.getAttribute('width') || '100%');
+    svgClone.setAttribute('height', svgClone.getAttribute('height') || '100%');
+    
+    const bbox = svg.getBoundingClientRect();
+    const width = Math.max(bbox.width, 300);
+    const height = Math.max(bbox.height, 200);
+    
+    svgClone.setAttribute('width', width);
+    svgClone.setAttribute('height', height);
+    
+    const svgData = new XMLSerializer().serializeToString(svgClone);
+    const svgBase64 = btoa(unescape(encodeURIComponent(svgData)));
+    const svgUrl = `data:image/svg+xml;base64,${svgBase64}`;
+    
+    const img = new Image();
+    
+    try {
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = svgUrl;
+      });
+      
+      const canvas = document.createElement('canvas');
+      const padding = 20;
+      canvas.width = width + padding * 2;
+      canvas.height = height + padding * 2;
+      
+      const ctx = canvas.getContext('2d');
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      ctx.fillStyle = currentTheme === 'dark' ? '#0d1117' : '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, padding, padding, width, height);
+      
+      const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(resolve, 'image/png');
+      });
+      
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+      } else {
+        throw new Error('Clipboard API not available in this context');
+      }
+    } catch (error) {
+      throw new Error('Failed to convert SVG to image: ' + error.message);
+    }
+  }
 
   const markedOptions = {
     gfm: true,

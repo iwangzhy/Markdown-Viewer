@@ -707,3 +707,31 @@ a:focus {
   margin: 0 auto;
   max-width: 100%;
 }
+
+.mermaid-copy-btn {
+  position: absolute;
+;
+  top: 10px;
+  right: 10px;
+  background-color: var(--button-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.mermaid-copy-btn:hover {
+  background-color: var(--button-hover);
+  border-color: var(--accent-color);
+}
+
+.mermaid-copy-btn i {
+  font-size: 14px;
+}
