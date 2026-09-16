@@ -718,6 +718,21 @@ a:focus {
   margin: 0;
 }
 
+/* 多行 inline 背景会被 html2canvas 画成整块并盖住同一行的正文；让代码占据自己的排版矩形。 */
+.pdf-export :not(pre) > code {
+  display: inline-block;
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* PDF 没有横向滚动条，长命令必须在页宽内折行，同时保留代码原有的换行和缩进。 */
+.pdf-export pre,
+.pdf-export pre code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .mermaid-copy-btn {
   position: absolute;
 ;

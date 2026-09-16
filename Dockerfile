@@ -13,11 +13,17 @@ RUN echo 'server { \
     \
     # Handle client-side routing for SPA \
     location / { \
+    expires -1; \
     try_files $uri $uri/ /index.html; \
     } \
     \
-    # Cache static assets \
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ { \
+    # JS/CSS 文件名固定，每次加载都需校验版本，避免更新后继续运行旧的导出逻辑 \
+    location ~* \.(js|css)$ { \
+    expires -1; \
+    } \
+    \
+    # Cache image assets \
+    location ~* \.(png|jpg|jpeg|gif|ico|svg)$ { \
     expires 1y; \
     add_header Cache-Control "public, immutable"; \
     } \
@@ -34,4 +40,3 @@ EXPOSE 80
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]
-
