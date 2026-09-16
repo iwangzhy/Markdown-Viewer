@@ -1,3 +1,88 @@
+function preparePdfTables(element) {
+  const view = element.ownerDocument.defaultView;
+  element.querySelectorAll('table tr').forEach(row => {
+    const background = view.getComputedStyle(row).backgroundColor;
+    // html2canvas 按行绘制背景，会盖住前一行的 rowspan 文字；改由各单元格绘制原有底色。
+    Array.from(row.cells).forEach(cell => {
+      if (view.getComputedStyle(cell).backgroundColor === 'rgba(0, 0, 0, 0)') {
+        cell.style.backgroundColor = background;
+      }
+    });
+    row.style.backgroundColor = 'transparent';
+    row.style.borderColor = 'transparent';
+  });
+}
+
+function getPdfContentRanges(element, scale) {
+  const doc = element.ownerDocument;
+  const origin = element.getBoundingClientRect().top;
+  const ranges = [];
+  const addRect = (rect, isText) => {
+    if (rect.width > 0 && rect.height > 0) {
+      // 字形外留 1px 保护抗锯齿；块边界向内取整，避免相邻表格行因舍入重叠而连续回退。
+      ranges.push(isText ? {
+        top: Math.floor((rect.top - origin - 1) * scale),
+        bottom: Math.ceil((rect.bottom - origin + 1) * scale)
+      } : {
+        top: Math.ceil((rect.top - origin) * scale),
+        bottom: Math.floor((rect.bottom - origin) * scale)
+      });
+    }
+  };
+
+  // 按实际换行后的文字矩形分页，长段落和长代码块也能在行间断开。
+  const walker = doc.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+  const range = doc.createRange();
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    if (!node.textContent.trim() || node.parentElement.closest('svg, mjx-container, style, script')) continue;
+    range.selectNodeContents(node);
+    Array.from(range.getClientRects()).forEach(rect => addRect(rect, true));
+  }
+
+  // 能放进一页的代码块、表格行和图形保持完整；超高代码块仍可在行间分页。
+  element.querySelectorAll('pre, tr, thead, td[rowspan], th[rowspan], img, svg, .mermaid-container, mjx-container, mjx-math, h1, h2, h3, h4, h5, h6, code, kbd')
+    .forEach(node => Array.from(node.getClientRects()).forEach(rect => addRect(rect, false)));
+
+  // 图的标题、简短说明和外框一起换页，避免上一页只剩一个标题或半截边框。
+  element.querySelectorAll('.mermaid-container').forEach(diagram => {
+    let previous = diagram.previousElementSibling;
+    if (previous?.matches('p')) previous = previous.previousElementSibling;
+    if (previous?.matches('h1, h2, h3, h4, h5, h6')) {
+      const top = previous.getBoundingClientRect().top;
+      const rect = diagram.getBoundingClientRect();
+      addRect({ top, bottom: rect.bottom, width: rect.width, height: rect.bottom - top }, false);
+    }
+  });
+  return ranges;
+}
+
+function getPdfPageSlices(canvasHeight, pageHeight, contentRanges) {
+  const height = Math.max(1, Math.floor(pageHeight));
+  const ranges = contentRanges
+    .map(({ top, bottom }) => ({ top: Math.max(0, Math.floor(top)), bottom: Math.ceil(bottom) }))
+    .filter(({ top, bottom }) => bottom > top && bottom - top <= height)
+    .sort((a, b) => b.top - a.top);
+  const slices = [];
+  let start = 0;
+
+  while (start < canvasHeight) {
+    let end = Math.min(start + height, canvasHeight);
+    if (end < canvasHeight) {
+      // 从下往上回退，兼顾同一行的行内代码、上下标和表格各列。
+      for (const range of ranges) {
+        if (range.top > start && range.top < end && range.bottom > end) {
+          end = range.top;
+        }
+      }
+    }
+    slices.push({ start, end });
+    // 下一页紧接上一页的实际切点，避免重复或漏掉像素行。
+    start = end;
+  }
+  return slices;
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   let markdownRenderTimeout = null;
   const RENDER_DELAY = 100;
@@ -801,13 +886,17 @@ This is a fully client-side application. Your content never leaves your browser 
     }
   });
 
-  exportPdf.addEventListener("click", async function () {
+  exportPdf.addEventListener("click", async function (event) {
+    event.preventDefault();
+    if (exportPdf.disabled) return;
+    const originalText = exportPdf.innerHTML;
+    let progressContainer;
+    let tempElement;
     try {
-      const originalText = exportPdf.innerHTML;
       exportPdf.innerHTML = '<i class="bi bi-hourglass-split"></i> Generating...';
       exportPdf.disabled = true;
 
-      const progressContainer = document.createElement('div');
+      progressContainer = document.createElement('div');
       progressContainer.style.position = 'fixed';
       progressContainer.style.top = '50%';
       progressContainer.style.left = '50%';
@@ -831,7 +920,7 @@ This is a fully client-side application. Your content never leaves your browser 
         ADD_ATTR: ['id', 'class', 'style', 'viewBox', 'd', 'fill', 'stroke', 'transform', 'marker-end', 'marker-start']
       });
 
-      const tempElement = document.createElement("div");
+      tempElement = document.createElement("div");
       tempElement.className = "markdown-body pdf-export";
       tempElement.innerHTML = sanitizedHtml;
       tempElement.style.padding = "20px";
@@ -847,8 +936,6 @@ This is a fully client-side application. Your content never leaves your browser 
       tempElement.style.color = currentTheme === "dark" ? "#c9d1d9" : "#24292e";
 
       document.body.appendChild(tempElement);
-
-      await new Promise(resolve => setTimeout(resolve, 200));
 
       try {
         await mermaid.run({
@@ -867,7 +954,11 @@ This is a fully client-side application. Your content never leaves your browser 
         }
       }
 
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // 图片和字体会改变行高，必须等排版稳定后再测量分页位置。
+      await Promise.all(Array.from(tempElement.querySelectorAll('img'), img =>
+        img.decode().catch(() => {})
+      ));
+      await document.fonts.ready;
 
       const pdfOptions = {
         orientation: 'portrait',
@@ -883,24 +974,31 @@ This is a fully client-side application. Your content never leaves your browser 
       const margin = 15;
       const contentWidth = pageWidth - (margin * 2);
 
+      const renderScale = 2;
+      let contentRanges = [];
       const canvas = await html2canvas(tempElement, {
-        scale: 2,
+        scale: renderScale,
         useCORS: true,
         allowTaint: true,
         logging: false,
         windowWidth: 1000,
-        windowHeight: tempElement.scrollHeight
+        windowHeight: tempElement.scrollHeight,
+        onclone: (clonedDocument) => {
+          const clonedContent = clonedDocument.querySelector('.pdf-export');
+          preparePdfTables(clonedContent);
+          // 使用截图副本的排版坐标，避免导出视口与当前窗口宽度不同造成偏移。
+          contentRanges = getPdfContentRanges(clonedContent, renderScale);
+        }
       });
 
       const scaleFactor = canvas.width / contentWidth;
-      const imgHeight = canvas.height / scaleFactor;
-      const pagesCount = Math.ceil(imgHeight / (pageHeight - margin * 2));
+      const pageSlices = getPdfPageSlices(canvas.height, (pageHeight - margin * 2) * scaleFactor, contentRanges);
 
-      for (let page = 0; page < pagesCount; page++) {
+      for (let page = 0; page < pageSlices.length; page++) {
         if (page > 0) pdf.addPage();
 
-        const sourceY = page * (pageHeight - margin * 2) * scaleFactor;
-        const sourceHeight = Math.min(canvas.height - sourceY, (pageHeight - margin * 2) * scaleFactor);
+        const sourceY = pageSlices[page].start;
+        const sourceHeight = pageSlices[page].end - sourceY;
         const destHeight = sourceHeight / scaleFactor;
 
         const pageCanvas = document.createElement('canvas');
@@ -918,23 +1016,16 @@ This is a fully client-side application. Your content never leaves your browser 
 
       statusText.textContent = 'Download successful!';
       setTimeout(() => {
-        document.body.removeChild(progressContainer);
+        progressContainer.remove();
       }, 1500);
-
-      document.body.removeChild(tempElement);
-      exportPdf.innerHTML = originalText;
-      exportPdf.disabled = false;
-
     } catch (error) {
       console.error("PDF export failed:", error);
       alert("PDF export failed: " + error.message);
-      exportPdf.innerHTML = '<i class="bi bi-file-earmark-pdf"></i> Export';
+      progressContainer?.remove();
+    } finally {
+      tempElement?.remove();
+      exportPdf.innerHTML = originalText;
       exportPdf.disabled = false;
-
-      const progressContainer = document.querySelector('div[style*="Preparing PDF"]');
-      if (progressContainer) {
-        document.body.removeChild(progressContainer);
-      }
     }
   });
 

@@ -708,6 +708,16 @@ a:focus {
   max-width: 100%;
 }
 
+/* SVG 转成图片后仍会应用自身的 margin，导出时由外层居中，避免右侧被重复偏移裁掉。 */
+.pdf-export .mermaid {
+  display: flex;
+  justify-content: center;
+}
+
+.pdf-export .mermaid-container svg {
+  margin: 0;
+}
+
 .mermaid-copy-btn {
   position: absolute;
 ;
