@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Primary Meta Tags -->
     <meta name="title" content="Markdown Viewer">
-    <meta name="description" content="Markdown Viewer is a powerful GitHub-style Markdown rendering tool with live preview, LaTeX math, Mermaid diagrams, syntax highlighting, dark mode, and export options to PDF, HTML, and MD—all fully client-side and secure.">
+    <meta name="description" content="Markdown Viewer is a powerful GitHub-style Markdown rendering tool with live preview, LaTeX math, Mermaid diagrams, syntax highlighting, dark mode, and PDF export—all fully client-side and secure.">
     <meta name="keywords" content="Markdown Viewer, GitHub-style markdown, live preview, markdown editor, LaTeX support, Mermaid diagrams, PDF export, syntax highlighting, markdown to HTML, secure markdown tool, client-side markdown viewer, ThisIs-Developer, advanced markdown parser, future markdown viewer, next-gen markdown tool">
     <meta name="author" content="ThisIs-Developer">
     <meta name="robots" content="index, follow">
@@ -17,14 +17,14 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://markdownviewer.pages.dev/">
     <meta property="og:title" content="Markdown Viewer">
-    <meta property="og:description" content="Markdown Viewer is a powerful GitHub-style Markdown rendering tool with live preview, LaTeX math, Mermaid diagrams, syntax highlighting, dark mode, and export options to PDF, HTML, and MD—all fully client-side and secure.">
+    <meta property="og:description" content="Markdown Viewer is a powerful GitHub-style Markdown rendering tool with live preview, LaTeX math, Mermaid diagrams, syntax highlighting, dark mode, and PDF export—all fully client-side and secure.">
     <meta property="og:image" content="https://markdownviewer.pages.dev/assets/icon.jpg">
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://markdownviewer.pages.dev/">
     <meta property="twitter:title" content="Markdown Viewer">
-    <meta property="twitter:description" content="Markdown Viewer is a powerful GitHub-style Markdown rendering tool with live preview, LaTeX math, Mermaid diagrams, syntax highlighting, dark mode, and export options to PDF, HTML, and MD—all fully client-side and secure.">
+    <meta property="twitter:description" content="Markdown Viewer is a powerful GitHub-style Markdown rendering tool with live preview, LaTeX math, Mermaid diagrams, syntax highlighting, dark mode, and PDF export—all fully client-side and secure.">
     <meta property="twitter:image" content="https://markdownviewer.pages.dev/assets/icon.jpg">
 
     <title>Markdown Viewer</title>
@@ -36,9 +36,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/emoji-toolkit@9.0.1/extras/css/joypixels.min.css">
     <!-- 新地址绕过已缓存一年的旧 JS/CSS；后续更新由服务端的缓存校验策略处理。 -->
-    <link rel="stylesheet" href="styles.css?v=pdf-export-20260916">
+    <link rel="stylesheet" href="styles.css?v=pdf-only-20260917">
     
-    <!-- 预览与 HTML 导出共用这段样式；内联保存也支持直接打开本地文件。 -->
+    <!-- 预览与 PDF 导出共用扩展语法的样式。 -->
     <style id="markdown-extension-styles">
         .markdown-body .markdown-alert {
           --alert-color: var(--color-accent-fg, #0969da);
@@ -91,7 +91,6 @@
     <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.3.0/dist/js-yaml.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.9/purify.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@11.6.0/dist/mermaid.min.js"></script>
@@ -134,16 +133,9 @@
                     </button>
                     <input type="file" id="file-input" class="file-input" accept=".md,.markdown,text/markdown">
                     
-                    <div class="dropdown">
-                        <button class="tool-button dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-download"></i> Export
-                        </button>
-                        <ul class="dropdown-menu" aria-labelledby="exportDropdown">
-                            <li><a class="dropdown-item" href="#" id="export-md">Markdown (.md)</a></li>
-                            <li><a class="dropdown-item" href="#" id="export-html">HTML</a></li>
-                            <li><a class="dropdown-item" href="#" id="export-pdf">PDF</a></li>
-                        </ul>
-                    </div>
+                    <button id="export-pdf" class="tool-button" type="button" title="Export as PDF">
+                        <i class="bi bi-download"></i> Export
+                    </button>
                     
                     <button id="copy-markdown-button" class="tool-button" title="Copy Markdown">
                         <i class="bi bi-clipboard"></i> Copy
@@ -189,14 +181,6 @@
                                 <i class="bi bi-upload me-2"></i> Import Markdown
                             </button>
                             
-                            <button id="mobile-export-md" class="mobile-menu-item" title="Export as Markdown">
-                                <i class="bi bi-file-earmark-text me-2"></i> Export as Markdown
-                            </button>
-                            
-                            <button id="mobile-export-html" class="mobile-menu-item" title="Export as HTML">
-                                <i class="bi bi-file-earmark-code me-2"></i> Export as HTML
-                            </button>
-                            
                             <button id="mobile-export-pdf" class="mobile-menu-item" title="Export as PDF">
                                 <i class="bi bi-file-earmark-pdf me-2"></i> Export as PDF
                             </button>
@@ -235,7 +219,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
-    <script src="markdown.js?v=markdown-20260917"></script>
-    <script src="script.js?v=markdown-20260917"></script>
+    <script src="markdown.js?v=pdf-only-20260917"></script>
+    <script src="script.js?v=pdf-only-20260917"></script>
 </body>
 </html>

@@ -23,7 +23,7 @@ Markdown Viewer is a professional, full-featured Markdown editor and preview app
 - **LaTeX math support** - Render mathematical equations using LaTeX syntax
 - **Mermaid diagrams** - Create diagrams and flowcharts within your Markdown
 - **Dark mode toggle** - Switch between light and dark themes for comfortable viewing
-- **Export options** - Download your content as Markdown, HTML, or PDF
+- **PDF export** - Download your content as PDF with a filename based on the document title
 - **Import Markdown files** - Drag & drop or select files to open
 - **Copy to clipboard** - Quickly copy your Markdown content with one click
 - **Sync scrolling** - Keep editor and preview panes aligned (toggleable)
@@ -52,7 +52,7 @@ Markdown Viewer is a professional, full-featured Markdown editor and preview app
 1. **Writing Markdown** - Type or paste Markdown content in the left editor panel
 2. **Viewing Output** - See the rendered HTML in the right preview panel
 3. **Importing Files** - Click "Import" or drag and drop .md files into the interface
-4. **Exporting Content** - Use the "Export" dropdown to download as MD, HTML, or PDF
+4. **Exporting Content** - Click "Export" (or press Ctrl/Cmd+S) to download a PDF. The filename uses the first H1, then the YAML `title`, then the first H2, and finally `Document.pdf` if none is available. Unsupported filename characters are replaced with spaces.
 5. **Toggle Dark Mode** - Click the moon icon to switch between light and dark themes
 6. **Toggle Sync Scrolling** - Enable/disable synchronized scrolling between panels
 
@@ -102,7 +102,7 @@ Admonition bodies support **Markdown** and footnotes[^redis].
 
 The preview displays `title` as plain text in an H1 only when the body has no H1 of its own. A body H1 takes precedence regardless of its text or position; headings inside code examples do not count. Other metadata is hidden; missing, empty or non-string titles do not create a heading. YAML arrays, nested fields, multiline strings, UTF-8 BOM and Windows line endings are accepted. The closing delimiter can be `---` or `...`.
 
-Front Matter is recognized only at the very start of the document. YAML inside a code fence stays visible as code. Invalid or unclosed Front Matter is left in the Markdown instead of silently discarding content. These rules also apply to HTML and PDF exports; Markdown export and copying preserve the original source.
+Front Matter is recognized only at the very start of the document. YAML inside a code fence stays visible as code. Invalid or unclosed Front Matter is left in the Markdown instead of silently discarding content. These rules also apply to PDF export; copying preserves the original source.
 
 These are specific Markdown extensions, not a full MDX or documentation-site runtime: React components, imports, site routing (`slug`), and arbitrary plugins are not executed. See [the complete syntax fixture](tests/fixtures/markdown-extensions.md) for a document you can import into the viewer.
 
@@ -129,7 +129,6 @@ See [tests/README.md](tests/README.md) for preview and export checks.
 - [Mermaid](https://mermaid-js.github.io/mermaid/) - Diagrams and flowcharts
 - [DOMPurify](https://github.com/cure53/DOMPurify) - HTML sanitization
 - [html2canvas.js](https://github.com/niklasvh/html2canvas) + [jsPDF](https://www.npmjs.com/package/jspdf)- PDF generation
-- [FileSaver.js](https://github.com/eligrey/FileSaver.js) - File download handling
 - [JoyPixels](https://www.joypixels.com/) - Emoji support
 
 ## 🤝 Contributing

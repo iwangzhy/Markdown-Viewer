@@ -1,3 +1,16 @@
+function getPdfFilename(element) {
+  // 解析器已在正文缺少一级标题时把 YAML title 转成一级标题，沿用相同的优先级。
+  for (const selector of ['h1', 'h2']) {
+    for (const heading of element.querySelectorAll(selector)) {
+      // 用标题的纯文字命名，并清理文件系统不接受的字符和末尾句点。
+      const name = heading.textContent.replace(/[<>:"/\\|?*\u0000-\u001f\u007f]/g, ' ')
+        .replace(/\s+/g, ' ').trim().replace(/[. ]+$/g, '');
+      if (name) return `${name}.pdf`;
+    }
+  }
+  return 'Document.pdf';
+}
+
 function preparePdfTables(element) {
   const view = element.ownerDocument.defaultView;
   element.querySelectorAll('table tr').forEach(row => {
@@ -116,8 +129,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const themeToggle = document.getElementById("theme-toggle");
   const importButton = document.getElementById("import-button");
   const fileInput = document.getElementById("file-input");
-  const exportMd = document.getElementById("export-md");
-  const exportHtml = document.getElementById("export-html");
   const exportPdf = document.getElementById("export-pdf");
   const copyMarkdownButton = document.getElementById("copy-markdown-button");
   const dropzone = document.getElementById("dropzone");
@@ -140,8 +151,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const mobileCharCount     = document.getElementById("mobile-char-count");
   const mobileToggleSync    = document.getElementById("mobile-toggle-sync");
   const mobileImportBtn     = document.getElementById("mobile-import-button");
-  const mobileExportMd      = document.getElementById("mobile-export-md");
-  const mobileExportHtml    = document.getElementById("mobile-export-html");
   const mobileExportPdf     = document.getElementById("mobile-export-pdf");
   const mobileCopyMarkdown  = document.getElementById("mobile-copy-markdown");
   const mobileThemeToggle   = document.getElementById("mobile-theme-toggle");
@@ -334,7 +343,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 ## ✨ Key Features
 - **Live Preview** with GitHub styling
-- **Smart Import/Export** (MD, HTML, PDF)
+- **Markdown Import and PDF Export**
 - **Mermaid Diagrams** for visual documentation
 - **LaTeX Math Support** for scientific notation
 - **Emoji Support** 😄 👍 🎉
@@ -737,8 +746,6 @@ This is a fully client-side application. Your content never leaves your browser 
     }
   });
   mobileImportBtn.addEventListener("click", () => fileInput.click());
-  mobileExportMd.addEventListener("click", () => exportMd.click());
-  mobileExportHtml.addEventListener("click", () => exportHtml.click());
   mobileExportPdf.addEventListener("click", () => exportPdf.click());
   mobileCopyMarkdown.addEventListener("click", () => copyMarkdownButton.click());
   mobileThemeToggle.addEventListener("click", () => {
@@ -781,74 +788,6 @@ This is a fully client-side application. Your content never leaves your browser 
     this.value = "";
   });
 
-  exportMd.addEventListener("click", function () {
-    try {
-      const blob = new Blob([markdownEditor.value], {
-        type: "text/markdown;charset=utf-8",
-      });
-      saveAs(blob, "document.md");
-    } catch (e) {
-      console.error("Export failed:", e);
-      alert("Export failed: " + e.message);
-    }
-  });
-
-  exportHtml.addEventListener("click", function () {
-    try {
-      const markdown = markdownEditor.value;
-      const sanitizedHtml = renderDocument(markdown);
-      const isDarkTheme =
-        document.documentElement.getAttribute("data-theme") === "dark";
-      const cssTheme = isDarkTheme
-        ? "https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.3.0/github-markdown-dark.min.css"
-        : "https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.3.0/github-markdown.min.css";
-      const extensionStyles = document.getElementById('markdown-extension-styles').textContent;
-      const fullHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Markdown Export</title>
-  <link rel="stylesheet" href="${cssTheme}">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/${
-    isDarkTheme ? "github-dark" : "github"
-  }.min.css">
-  <style>
-      ${extensionStyles}
-      body {
-          background-color: ${isDarkTheme ? "#0d1117" : "#ffffff"};
-          color: ${isDarkTheme ? "#c9d1d9" : "#24292e"};
-      }
-      .markdown-body {
-          box-sizing: border-box;
-          min-width: 200px;
-          max-width: 980px;
-          margin: 0 auto;
-          padding: 45px;
-          background-color: ${isDarkTheme ? "#0d1117" : "#ffffff"};
-          color: ${isDarkTheme ? "#c9d1d9" : "#24292e"};
-      }
-      @media (max-width: 767px) {
-          .markdown-body {
-              padding: 15px;
-          }
-      }
-  </style>
-</head>
-<body>
-  <article class="markdown-body">
-      ${sanitizedHtml}
-  </article>
-</body>
-</html>`;
-      const blob = new Blob([fullHtml], { type: "text/html;charset=utf-8" });
-      saveAs(blob, "document.html");
-    } catch (e) {
-      console.error("HTML export failed:", e);
-      alert("HTML export failed: " + e.message);
-    }
-  });
-
   exportPdf.addEventListener("click", async function (event) {
     event.preventDefault();
     if (exportPdf.disabled) return;
@@ -858,6 +797,7 @@ This is a fully client-side application. Your content never leaves your browser 
     try {
       exportPdf.innerHTML = '<i class="bi bi-hourglass-split"></i> Generating...';
       exportPdf.disabled = true;
+      mobileExportPdf.disabled = true;
 
       progressContainer = document.createElement('div');
       progressContainer.style.position = 'fixed';
@@ -882,6 +822,7 @@ This is a fully client-side application. Your content never leaves your browser 
       tempElement = document.createElement("div");
       tempElement.className = "markdown-body pdf-export";
       tempElement.innerHTML = sanitizedHtml;
+      const filename = getPdfFilename(tempElement);
       tempElement.style.padding = "20px";
       tempElement.style.width = "210mm";
       tempElement.style.margin = "0 auto";
@@ -971,7 +912,7 @@ This is a fully client-side application. Your content never leaves your browser 
         pdf.addImage(imgData, 'PNG', margin, margin, contentWidth, destHeight);
       }
 
-      pdf.save("document.pdf");
+      pdf.save(filename);
 
       statusText.textContent = 'Download successful!';
       setTimeout(() => {
@@ -985,6 +926,7 @@ This is a fully client-side application. Your content never leaves your browser 
       tempElement?.remove();
       exportPdf.innerHTML = originalText;
       exportPdf.disabled = false;
+      mobileExportPdf.disabled = false;
     }
   });
 
@@ -1093,7 +1035,7 @@ This is a fully client-side application. Your content never leaves your browser 
   document.addEventListener("keydown", function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key === "s") {
       e.preventDefault();
-      exportMd.click();
+      exportPdf.click();
     }
     if ((e.ctrlKey || e.metaKey) && e.key === "c") {
       e.preventDefault();

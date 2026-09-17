@@ -9,13 +9,16 @@ npm test
 
 `markdown-rendering.test.cjs` 使用真实的 Marked、YAML、脚注、标题锚点、高亮及 DOMPurify，验证文件头识别、正文一级标题优先、错误输入保留、代码块隔离、提示块嵌套、脚注回跳和 HTML 清理。
 
+`markdown-integration.test.cjs` 验证桌面按钮、移动端按钮和 Ctrl/Cmd+S 均直接导出 PDF，以及“一级标题 → YAML title → 二级标题 → Document”的命名顺序、文件名清理、点击时的最新内容和复制原文。PDF 绘制及下载使用替身，实际排版仍需浏览器检查。
+
 用 `tests/fixtures/markdown-extensions.md` 检查实际预览：
 
 1. 文首只出现一级标题“Redis 常用命令与实战手册”，不出现 `slug`、`tags` 等元数据。
 2. 点击“跳转到常用命令”能跳到对应标题；脚注的两处引用和各自回链都能跳转。
 3. GitHub 提示块和 `:::tip` 有独立样式，YAML 代码示例保持原样，代码语言后附加属性不影响高亮。
 4. 切换深浅色模式，检查提示块、脚注、表格、Mermaid 和公式仍正常。
-5. 导出 HTML 和 PDF，检查文档标题及扩展语法与预览一致；HTML 带提示块和脚注样式，MD 导出仍包含原始元数据。现有 HTML 导出不会运行 Mermaid 或 MathJax，这两类动态内容需在预览或 PDF 中检查。
+5. 点击 Export，检查直接下载 PDF、没有格式下拉列表，文档标题及扩展语法与预览一致；文件名为 `Redis 常用命令与实战手册.pdf`。移动端只保留 Export as PDF，Ctrl/Cmd+S 也导出 PDF。
+6. 分别使用只有 YAML `title`、只有二级标题和没有标题的文档导出，检查文件名依次取 `title`、二级标题和 `Document.pdf`；代码块中的 `#` 不作为标题。
 
 ## PDF 分页
 

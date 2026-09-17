@@ -111,7 +111,7 @@ function createMarkdownRenderer({ marked, hljs, yaml, footnote, gfmHeadingId, DO
     gfmHeadingId(), markdownAdmonitions(), footnote()
   );
 
-  // 预览和两种富文本导出共用解析、扩展及清理规则，避免同一文档出现不同结果。
+  // 预览和 PDF 导出共用解析、扩展及清理规则，避免同一文档出现不同结果。
   return source => DOMPurify.sanitize(parser.parse(prepareMarkdownSource(source, yaml, marked)), {
     ADD_TAGS: ['mjx-container'],
     ADD_ATTR: ['id', 'class', 'style']
