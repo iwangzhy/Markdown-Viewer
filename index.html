@@ -38,11 +38,57 @@
     <!-- 新地址绕过已缓存一年的旧 JS/CSS；后续更新由服务端的缓存校验策略处理。 -->
     <link rel="stylesheet" href="styles.css?v=pdf-export-20260916">
     
+    <!-- 预览与 HTML 导出共用这段样式；内联保存也支持直接打开本地文件。 -->
+    <style id="markdown-extension-styles">
+        .markdown-body .markdown-alert {
+          --alert-color: var(--color-accent-fg, #0969da);
+          padding: 12px 16px;
+          margin-bottom: 16px;
+          border-left: 4px solid var(--alert-color);
+          border-radius: 4px;
+          background: var(--color-canvas-subtle, #f6f8fa);
+        }
+
+        .markdown-body .markdown-alert-tip { --alert-color: #2da44e; }
+        .markdown-body .markdown-alert-important { --alert-color: #a371f7; }
+        .markdown-body .markdown-alert-warning { --alert-color: #bf8700; }
+        .markdown-body .markdown-alert-caution { --alert-color: #f85149; }
+
+        .markdown-body .markdown-alert-title {
+          font-weight: 600;
+          color: var(--alert-color);
+          margin-bottom: 8px;
+        }
+
+        .markdown-body .markdown-alert > :last-child {
+          margin-bottom: 0;
+        }
+
+        .markdown-body .footnotes {
+          margin-top: 24px;
+          padding-top: 16px;
+          border-top: 1px solid var(--color-border-default, #d0d7de);
+          font-size: 0.9em;
+        }
+
+        .markdown-body .footnotes .sr-only {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          overflow: hidden;
+          clip-path: inset(50%);
+          white-space: nowrap;
+        }
+    </style>
+
     <!-- Added mermaid CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.css">
     
     <!-- Loading order optimized - ensure libraries are loaded before they're used -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked-gfm-heading-id@3.1.2/lib/index.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked-footnote@1.4.0/dist/index.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.3.0/dist/js-yaml.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.9/purify.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -189,6 +235,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
-    <script src="script.js?v=pdf-export-20260916"></script>
+    <script src="markdown.js?v=markdown-20260917"></script>
+    <script src="script.js?v=markdown-20260917"></script>
 </body>
 </html>

@@ -71,7 +71,51 @@ Markdown Viewer is a professional, full-featured Markdown editor and preview app
 - Task lists
 - LaTeX equations (inline and block)
 - Mermaid diagrams
-- And more!
+- YAML Front Matter (`---` at the start of a document): render `title` as an H1 when the body has no H1, and hide other metadata
+- Footnotes with repeated references and backlinks (`[^note]`)
+- GitHub alerts (`> [!NOTE]`, `TIP`, `IMPORTANT`, `WARNING`, `CAUTION`)
+- Documentation admonitions (`:::note`, `:::tip`, `:::info`, `:::warning`, `:::danger`, `:::important`, `:::caution`), including nested blocks and custom titles
+- Stable heading anchors, including Chinese headings and repeated heading names
+- Code fences with language metadata (for example, `bash title="example.sh" {1}` keeps Bash highlighting; filenames and line emphasis are not displayed)
+- Safe HTML such as `<details>`, `<summary>`, `<mark>`, `<sub>` and `<sup>`
+
+### Front Matter and documentation syntax
+
+```markdown
+---
+slug: /redis-practical-guide
+title: Redis 常用命令与实战手册
+tags: [Redis, 缓存]
+---
+
+## 常用命令
+
+> [!NOTE]
+> This is a GitHub-style note.
+
+:::tip[Usage tip]
+Admonition bodies support **Markdown** and footnotes[^redis].
+:::
+
+[^redis]: Footnote text.
+```
+
+The preview displays `title` as plain text in an H1 only when the body has no H1 of its own. A body H1 takes precedence regardless of its text or position; headings inside code examples do not count. Other metadata is hidden; missing, empty or non-string titles do not create a heading. YAML arrays, nested fields, multiline strings, UTF-8 BOM and Windows line endings are accepted. The closing delimiter can be `---` or `...`.
+
+Front Matter is recognized only at the very start of the document. YAML inside a code fence stays visible as code. Invalid or unclosed Front Matter is left in the Markdown instead of silently discarding content. These rules also apply to HTML and PDF exports; Markdown export and copying preserve the original source.
+
+These are specific Markdown extensions, not a full MDX or documentation-site runtime: React components, imports, site routing (`slug`), and arbitrary plugins are not executed. See [the complete syntax fixture](tests/fixtures/markdown-extensions.md) for a document you can import into the viewer.
+
+### Development tests
+
+The app still runs as static HTML/CSS/JavaScript without a build step. Node.js dependencies are used only for regression tests and mirror the browser's pinned parser versions.
+
+```sh
+npm ci
+npm test
+```
+
+See [tests/README.md](tests/README.md) for preview and export checks.
 
 ## 🔧 Technologies Used
 

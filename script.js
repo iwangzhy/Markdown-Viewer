@@ -325,39 +325,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  const markedOptions = {
-    gfm: true,
-    breaks: false,
-    pedantic: false,
-    sanitize: false,
-    smartypants: false,
-    xhtml: false,
-    headerIds: true,
-    mangle: false,
-  };
-
-  const renderer = new marked.Renderer();
-  renderer.code = function (code, language) {
-    if (language === 'mermaid') {
-      const uniqueId = 'mermaid-diagram-' + Math.random().toString(36).substr(2, 9);
-      return `<div class="mermaid-container"><div class="mermaid" id="${uniqueId}">${code}</div></div>`;
-    }
-    
-    const validLanguage = hljs.getLanguage(language) ? language : "plaintext";
-    const highlightedCode = hljs.highlight(code, {
-      language: validLanguage,
-    }).value;
-    return `<pre><code class="hljs ${validLanguage}">${highlightedCode}</code></pre>`;
-  };
-
-  marked.setOptions({
-    ...markedOptions,
-    renderer: renderer,
-    highlight: function (code, language) {
-      if (language === 'mermaid') return code;
-      const validLanguage = hljs.getLanguage(language) ? language : "plaintext";
-      return hljs.highlight(code, { language: validLanguage }).value;
-    },
+  const renderDocument = createMarkdownRenderer({
+    marked, hljs, yaml: jsyaml, footnote: markedFootnote,
+    gfmHeadingId: markedGfmHeadingId.gfmHeadingId, DOMPurify
   });
 
   const sampleMarkdown = `# Welcome to Markdown Viewer
@@ -528,20 +498,14 @@ This is a fully client-side application. Your content never leaves your browser 
   async function renderMarkdown() {
     try {
       const markdown = markdownEditor.value;
-      const html = marked.parse(markdown);
-      const sanitizedHtml = DOMPurify.sanitize(html, {
-        ADD_TAGS: ['mjx-container'],
-        ADD_ATTR: ['id', 'class', 'style']
-      });
-      markdownPreview.innerHTML = sanitizedHtml;
+      markdownPreview.innerHTML = renderDocument(markdown);
 
-      markdownPreview.querySelectorAll("pre code").forEach((block) => {
+      // 围栏代码已在解析时高亮；这里只补处理文档直接嵌入的 HTML 代码块。
+      markdownPreview.querySelectorAll('pre code:not(.hljs)').forEach(block => {
         try {
-          if (!block.classList.contains('mermaid')) {
-            hljs.highlightElement(block);
-          }
+          hljs.highlightElement(block);
         } catch (e) {
-          console.warn("Syntax highlighting failed for a code block:", e);
+          console.warn('Syntax highlighting failed for a code block:', e);
         }
       });
 
@@ -574,9 +538,9 @@ This is a fully client-side application. Your content never leaves your browser 
     } catch (e) {
       console.error("Markdown rendering failed:", e);
       markdownPreview.innerHTML = `<div class="alert alert-danger">
-              <strong>Error rendering markdown:</strong> ${e.message}
+              <strong>Error rendering markdown:</strong> ${escapeMarkdownHtml(e.message)}
           </div>
-          <pre>${markdownEditor.value}</pre>`;
+          <pre>${escapeMarkdownHtml(markdownEditor.value)}</pre>`;
     }
   }
 
@@ -605,7 +569,7 @@ This is a fully client-side application. Your content never leaves your browser 
       let parent = node.parentNode;
       let isInCode = false;
       while (parent && parent !== element) {
-        if (parent.tagName === 'PRE' || parent.tagName === 'CODE') {
+        if (parent.tagName === 'PRE' || parent.tagName === 'CODE' || parent.classList?.contains('mermaid')) {
           isInCode = true;
           break;
         }
@@ -643,7 +607,8 @@ This is a fully client-side application. Your content never leaves your browser 
       if (hasEmoji) {
         result += text.substring(lastIndex);
         const span = document.createElement('span');
-        span.innerHTML = result;
+        // 文本中的 <...> 可能来自已转义的标题，替换表情时不能把它重新当成 HTML。
+        span.textContent = result;
         textNode.parentNode.replaceChild(span, textNode);
       }
     });
@@ -831,16 +796,13 @@ This is a fully client-side application. Your content never leaves your browser 
   exportHtml.addEventListener("click", function () {
     try {
       const markdown = markdownEditor.value;
-      const html = marked.parse(markdown);
-      const sanitizedHtml = DOMPurify.sanitize(html, {
-        ADD_TAGS: ['mjx-container'], 
-        ADD_ATTR: ['id', 'class', 'style']
-      });
+      const sanitizedHtml = renderDocument(markdown);
       const isDarkTheme =
         document.documentElement.getAttribute("data-theme") === "dark";
       const cssTheme = isDarkTheme
         ? "https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.3.0/github-markdown-dark.min.css"
         : "https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.3.0/github-markdown.min.css";
+      const extensionStyles = document.getElementById('markdown-extension-styles').textContent;
       const fullHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -852,6 +814,7 @@ This is a fully client-side application. Your content never leaves your browser 
     isDarkTheme ? "github-dark" : "github"
   }.min.css">
   <style>
+      ${extensionStyles}
       body {
           background-color: ${isDarkTheme ? "#0d1117" : "#ffffff"};
           color: ${isDarkTheme ? "#c9d1d9" : "#24292e"};
@@ -914,11 +877,7 @@ This is a fully client-side application. Your content never leaves your browser 
       document.body.appendChild(progressContainer);
 
       const markdown = markdownEditor.value;
-      const html = marked.parse(markdown);
-      const sanitizedHtml = DOMPurify.sanitize(html, {
-        ADD_TAGS: ['mjx-container', 'svg', 'path', 'g', 'marker', 'defs', 'pattern', 'clipPath'],
-        ADD_ATTR: ['id', 'class', 'style', 'viewBox', 'd', 'fill', 'stroke', 'transform', 'marker-end', 'marker-start']
-      });
+      const sanitizedHtml = renderDocument(markdown);
 
       tempElement = document.createElement("div");
       tempElement.className = "markdown-body pdf-export";

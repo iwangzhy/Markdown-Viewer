@@ -1,4 +1,23 @@
-# PDF 导出回归验证
+# Markdown 预览与导出回归验证
+
+安装测试依赖后运行全部回归测试（解析器版本与页面 CDN 一致）：
+
+```sh
+npm ci
+npm test
+```
+
+`markdown-rendering.test.cjs` 使用真实的 Marked、YAML、脚注、标题锚点、高亮及 DOMPurify，验证文件头识别、正文一级标题优先、错误输入保留、代码块隔离、提示块嵌套、脚注回跳和 HTML 清理。
+
+用 `tests/fixtures/markdown-extensions.md` 检查实际预览：
+
+1. 文首只出现一级标题“Redis 常用命令与实战手册”，不出现 `slug`、`tags` 等元数据。
+2. 点击“跳转到常用命令”能跳到对应标题；脚注的两处引用和各自回链都能跳转。
+3. GitHub 提示块和 `:::tip` 有独立样式，YAML 代码示例保持原样，代码语言后附加属性不影响高亮。
+4. 切换深浅色模式，检查提示块、脚注、表格、Mermaid 和公式仍正常。
+5. 导出 HTML 和 PDF，检查文档标题及扩展语法与预览一致；HTML 带提示块和脚注样式，MD 导出仍包含原始元数据。现有 HTML 导出不会运行 Mermaid 或 MathJax，这两类动态内容需在预览或 PDF 中检查。
+
+## PDF 分页
 
 运行不依赖浏览器的测试：
 
