@@ -23,7 +23,7 @@ Markdown Viewer is a professional, full-featured Markdown editor and preview app
 - **LaTeX math support** - Render mathematical equations using LaTeX syntax
 - **Mermaid diagrams** - Create diagrams and flowcharts within your Markdown
 - **Dark mode toggle** - Switch between light and dark themes for comfortable viewing
-- **PDF export** - Download your content as PDF with a filename based on the document title
+- **PDF export** - Download your content as PDF with a filename based on the document title and clickable, hierarchical bookmarks
 - **Import Markdown files** - Drag & drop or select files to open
 - **Copy to clipboard** - Quickly copy your Markdown content with one click
 - **Sync scrolling** - Keep editor and preview panes aligned (toggleable)
@@ -53,6 +53,7 @@ Markdown Viewer is a professional, full-featured Markdown editor and preview app
 2. **Viewing Output** - See the rendered HTML in the right preview panel
 3. **Importing Files** - Click "Import" or drag and drop .md files into the interface
 4. **Exporting Content** - Click "Export" (or press Ctrl/Cmd+S) to download a PDF. The filename uses the first H1, then the YAML `title`, then the first H2, and finally `Document.pdf` if none is available. Unsupported filename characters are replaced with spaces.
+   Headings H2–H6 become hierarchical bookmarks in the PDF reader's sidebar. Each bookmark jumps to the page containing its heading, using the final export pagination. H1 headings, blank headings, code examples, and hidden footnote labels are excluded. Documents without H2–H6 headings export normally without bookmarks. Readers that support the PDF opening preference show the bookmarks panel automatically.
 5. **Toggle Dark Mode** - Click the moon icon to switch between light and dark themes
 6. **Toggle Sync Scrolling** - Enable/disable synchronized scrolling between panels
 

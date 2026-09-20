@@ -96,6 +96,40 @@ function getPdfPageSlices(canvasHeight, pageHeight, contentRanges) {
   return slices;
 }
 
+function addPdfOutline(pdf, element, pageSlices, scale) {
+  const origin = element.getBoundingClientRect().top;
+  const view = element.ownerDocument.defaultView;
+  const ancestors = [];
+  let hasBookmarks = false;
+
+  for (const heading of element.querySelectorAll('h1, h2, h3, h4, h5, h6')) {
+    // 脚注扩展会生成只供屏幕阅读器使用的标题，代码示例也不属于正文目录。
+    if (heading.matches('.footnotes .sr-only') || heading.closest('pre, code')) continue;
+    const level = Number(heading.tagName.slice(1));
+    if (level === 1) {
+      // 一级标题不进入目录，但仍是章节边界，后面的子标题不能挂到上一章。
+      ancestors.length = 0;
+      continue;
+    }
+    const title = heading.textContent.replace(/\s+/g, ' ').trim();
+    const rect = heading.getBoundingClientRect();
+    if (!title || rect.width <= 0 || rect.height <= 0 || view.getComputedStyle(heading).visibility !== 'visible') continue;
+
+    // 与分页时的标题边界保持相同取整方式；页边界上的标题归入下一页。
+    const top = Math.max(0, Math.ceil((rect.top - origin) * scale));
+    const pageIndex = pageSlices.findIndex(slice => top >= slice.start && top < slice.end);
+    if (pageIndex < 0) continue;
+
+    // 跳级标题挂在最近的上级下，例如 H2 后直接出现 H4 时不补造 H3。
+    while (ancestors.length && ancestors.at(-1).level >= level) ancestors.pop();
+    const item = pdf.outline.add(ancestors.at(-1)?.item ?? null, title, { pageNumber: pageIndex + 1 });
+    ancestors.push({ level, item });
+    hasBookmarks = true;
+  }
+
+  if (hasBookmarks) pdf.setDisplayMode(null, null, 'UseOutlines');
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   let markdownRenderTimeout = null;
   const RENDER_DELAY = 100;
@@ -897,6 +931,7 @@ This is a fully client-side application. Your content never leaves your browser 
             const height = Math.ceil(clonedContent.getBoundingClientRect().height) * renderScale;
             const contentRanges = getPdfContentRanges(clonedContent, renderScale);
             pageSlices = getPdfPageSlices(height, maxPageHeight, contentRanges);
+            addPdfOutline(pdf, clonedContent, pageSlices, renderScale);
           }
         }
       };

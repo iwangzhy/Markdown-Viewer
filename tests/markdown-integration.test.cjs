@@ -3,7 +3,7 @@ const { readFileSync } = require('node:fs');
 const { test } = require('node:test');
 const { JSDOM } = require('jsdom');
 
-async function openEditor(t, source, { layoutHeight = 100, failPage = 0, failure = 'empty' } = {}) {
+async function openEditor(t, source, { layoutHeight = 100, headingTops = [], failPage = 0, failure = 'empty' } = {}) {
   const html = readFileSync(require.resolve('../index.html'), 'utf8');
   const dom = new JSDOM(html, { url: 'http://localhost/', runScripts: 'outside-only' });
   const { window } = dom;
@@ -17,8 +17,14 @@ async function openEditor(t, source, { layoutHeight = 100, failPage = 0, failure
   const captures = [];
   const images = [];
   const canvases = [];
+  const outlines = [];
   const getBoundingClientRect = window.HTMLElement.prototype.getBoundingClientRect;
   window.HTMLElement.prototype.getBoundingClientRect = function () {
+    if (this.matches('h1, h2, h3, h4, h5, h6') && this.closest('.pdf-export')) {
+      const headings = [...this.closest('.pdf-export').querySelectorAll('h1, h2, h3, h4, h5, h6')];
+      const top = headingTops[headings.indexOf(this)] ?? 20;
+      return { top, bottom: top + 30, left: -9979, width: 700, height: 30 };
+    }
     return this.matches('.pdf-export')
       ? { top: 0, bottom: layoutHeight, left: -9999, width: 793.6875, height: layoutHeight }
       : getBoundingClientRect.call(this);
@@ -53,6 +59,13 @@ async function openEditor(t, source, { layoutHeight = 100, failPage = 0, failure
     },
     jspdf: { jsPDF: class {
       internal = { pageSize: { getWidth: () => 210, getHeight: () => 297 } };
+      outline = { root: { children: [] }, add(parent, title, options) {
+        const item = { title, options: { ...options }, children: [] };
+        (parent ?? this.root).children.push(item);
+        return item;
+      } };
+      constructor() { outlines.push(this.outline); }
+      setDisplayMode(zoom, layout, mode) { this.outline.mode = mode; }
       addPage() {}
       addImage(data, format, x, y, width, height) { images.push({ width, height }); }
       save(filename) { downloads.push(filename); }
@@ -70,8 +83,34 @@ async function openEditor(t, source, { layoutHeight = 100, failPage = 0, failure
   window.eval(readFileSync(require.resolve('../script.js'), 'utf8'));
   window.document.dispatchEvent(new window.Event('DOMContentLoaded'));
   await Promise.resolve();
-  return { window, downloads, rendered, copied, errors, captures, images, canvases };
+  return { window, downloads, rendered, copied, errors, captures, images, canvases, outlines };
 }
+
+test('PDF export writes bookmarks once with final page numbers and resets them on the next export', async t => {
+  const source = '# 中文手册\n\n## 安装\n\n### 子章节\n\n## 安装\n\n正文[^a]\n\n[^a]: 脚注';
+  const { window, downloads, errors, outlines, captures } = await openEditor(t, source, {
+    layoutHeight: 4000, headingTops: [20, 60, 1250, 2400, 3500]
+  });
+  window.document.getElementById('export-pdf').click();
+  await new Promise(setImmediate);
+  assert.deepEqual(errors, []);
+  assert.ok(captures.length > 3);
+  assert.deepEqual(outlines[0].root.children, [
+    { title: '安装', options: { pageNumber: 1 }, children: [
+      { title: '子章节', options: { pageNumber: 2 }, children: [] }
+    ] },
+    { title: '安装', options: { pageNumber: 3 }, children: [] }
+  ]);
+  assert.equal(outlines[0].mode, 'UseOutlines');
+
+  window.document.getElementById('markdown-editor').value = '# 仅有一级标题\n\n正文';
+  window.document.getElementById('export-pdf').click();
+  await new Promise(setImmediate);
+  assert.deepEqual(downloads, ['中文手册.pdf', '仅有一级标题.pdf']);
+  assert.deepEqual(outlines[1].root.children, []);
+  assert.equal(outlines[1].mode, undefined);
+  assert.deepEqual(errors, []);
+});
 
 test('exports a document taller than the canvas limit with bounded, contiguous page captures', async t => {
   const layoutHeight = 71666;
@@ -180,7 +219,7 @@ test('PDF filename follows heading priority using current editor content', async
 });
 
 test('desktop, mobile and save shortcuts export PDF without a format dropdown', async t => {
-  const { window, downloads, errors } = await openEditor(t, '# 导出验证');
+  const { window, downloads, errors, outlines } = await openEditor(t, '# 导出验证\n\n## 正文章节');
   const { document } = window;
   assert.equal(document.querySelector('.dropdown, #export-md, #export-html, #mobile-export-md, #mobile-export-html'), null);
   const desktop = document.getElementById('export-pdf');
@@ -207,5 +246,7 @@ test('desktop, mobile and save shortcuts export PDF without a format dropdown', 
     await new Promise(setImmediate);
   }
   assert.deepEqual(downloads, Array(4).fill('导出验证.pdf'));
+  assert.ok(outlines.every(outline => outline.root.children.length === 1 &&
+    outline.root.children[0].title === '正文章节' && outline.mode === 'UseOutlines'));
   assert.deepEqual(errors, []);
 });
