@@ -9,7 +9,7 @@ npm test
 
 `markdown-rendering.test.cjs` 使用真实的 Marked、YAML、脚注、标题锚点、高亮及 DOMPurify，验证文件头识别、正文一级标题优先、错误输入保留、代码块隔离、提示块嵌套、脚注回跳和 HTML 清理。
 
-`markdown-integration.test.cjs` 验证桌面按钮、移动端按钮和 Ctrl/Cmd+S 均直接导出 PDF，以及“一级标题 → YAML title → 二级标题 → Document”的命名顺序、文件名清理、点击时的最新内容和复制原文。PDF 绘制及下载使用替身，实际排版仍需浏览器检查。
+`markdown-integration.test.cjs` 验证桌面按钮、移动端按钮和 Ctrl/Cmd+S 均直接导出 PDF，以及“一级标题 → YAML title → 二级标题 → Document”的命名顺序、文件名清理、点击时的最新内容和复制原文。还会模拟长画布尺寸限制，检查逐页截图、画布释放，以及中途绘制失败时停止下载并恢复按钮。PDF 绘制及下载使用替身，实际排版仍需浏览器检查。
 
 用 `tests/fixtures/markdown-extensions.md` 检查实际预览：
 
@@ -36,6 +36,7 @@ node --test tests/pdf-pagination.test.cjs
 4. 检查时序图的最右列和底部节点。切换深色模式重复导出，检查图形和表格底色。
 5. 用超过一页的中文段落、代码块和表格导出，检查页尾及下一页页首的文字完整，表格不出现一行占一页的情况。
 6. 导出 `tests/fixtures/pdf-inline-code.md`：行尾代码换行后，前后中文完整可见，长行内代码和代码块中的长命令都在页宽内折行。
+7. 导出包含数千行正文、代码块和表格的长文档（至少 60 页）：检查首页、中间页、末页均有内容，没有整份空白或重复页面；生成过程中应显示当前页数。导出按每页的高度创建画布，不能先生成整篇长图再裁切。
 
 若页面仍出现旧版问题，先在浏览器网络面板核对实际加载的 `script.js`，不能只检查磁盘上的文件。Docker 部署更新需要重新构建镜像；HTML、JS、CSS 应返回 `Cache-Control: no-cache`。当前资源地址带有一次性的版本参数，用于绕过旧版本的一年强缓存。
 

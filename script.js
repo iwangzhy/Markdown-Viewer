@@ -875,41 +875,83 @@ This is a fully client-side application. Your content never leaves your browser 
       const contentWidth = pageWidth - (margin * 2);
 
       const renderScale = 2;
-      let contentRanges = [];
-      const canvas = await html2canvas(tempElement, {
+      const canvasWidth = Math.ceil(tempElement.getBoundingClientRect().width) * renderScale;
+      const scaleFactor = canvasWidth / contentWidth;
+      const maxPageHeight = Math.floor((pageHeight - margin * 2) * scaleFactor);
+      let pageSlices;
+      const renderOptions = {
         scale: renderScale,
+        width: canvasWidth / renderScale,
         useCORS: true,
         allowTaint: true,
         logging: false,
         windowWidth: 1000,
         windowHeight: tempElement.scrollHeight,
+        scrollX: 0,
+        scrollY: 0,
         onclone: (clonedDocument) => {
           const clonedContent = clonedDocument.querySelector('.pdf-export');
           preparePdfTables(clonedContent);
-          // 使用截图副本的排版坐标，避免导出视口与当前窗口宽度不同造成偏移。
-          contentRanges = getPdfContentRanges(clonedContent, renderScale);
+          if (!pageSlices) {
+            // 首次克隆时先测量完整排版；这里只保存坐标，不创建整篇长画布。
+            const height = Math.ceil(clonedContent.getBoundingClientRect().height) * renderScale;
+            const contentRanges = getPdfContentRanges(clonedContent, renderScale);
+            pageSlices = getPdfPageSlices(height, maxPageHeight, contentRanges);
+          }
         }
+      };
+
+      // 第一页的切点要等 onclone 测量后才知道，先绘制至多一页，再裁掉切点之后的部分。
+      let canvas = await html2canvas(tempElement, {
+        ...renderOptions,
+        y: 0,
+        height: maxPageHeight / renderScale
       });
 
-      const scaleFactor = canvas.width / contentWidth;
-      const pageSlices = getPdfPageSlices(canvas.height, (pageHeight - margin * 2) * scaleFactor, contentRanges);
-
       for (let page = 0; page < pageSlices.length; page++) {
-        if (page > 0) pdf.addPage();
-
+        statusText.textContent = `Generating PDF... ${page + 1}/${pageSlices.length}`;
         const sourceY = pageSlices[page].start;
         const sourceHeight = pageSlices[page].end - sourceY;
         const destHeight = sourceHeight / scaleFactor;
 
-        const pageCanvas = document.createElement('canvas');
-        pageCanvas.width = canvas.width;
-        pageCanvas.height = sourceHeight;
+        if (page > 0) {
+          // y 和 height 使用 CSS 像素；分页坐标是放大后的像素，必须换算后再截图。
+          canvas = await html2canvas(tempElement, {
+            ...renderOptions,
+            y: sourceY / renderScale,
+            height: sourceHeight / renderScale
+          });
+        }
 
-        const ctx = pageCanvas.getContext('2d');
-        ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
+        let pageCanvas = canvas;
+        try {
+          const context = canvas.getContext('2d');
+          // 导出背景始终不透明；全透明像素或空图片表示绘制失败，不能继续保存空白 PDF。
+          if (!context || canvas.width !== canvasWidth || canvas.height < sourceHeight ||
+              context.getImageData(0, 0, 1, 1).data[3] === 0) {
+            throw new Error(`Could not render PDF page ${page + 1}. Please try again.`);
+          }
 
-        const imgData = pageCanvas.toDataURL('image/png');
-        pdf.addImage(imgData, 'PNG', margin, margin, contentWidth, destHeight);
+          if (canvas.height !== sourceHeight) {
+            pageCanvas = document.createElement('canvas');
+            pageCanvas.width = canvasWidth;
+            pageCanvas.height = sourceHeight;
+            const context = pageCanvas.getContext('2d');
+            if (!context) throw new Error(`Could not create PDF page ${page + 1}.`);
+            context.drawImage(canvas, 0, 0, canvasWidth, sourceHeight, 0, 0, canvasWidth, sourceHeight);
+          }
+
+          const imgData = pageCanvas.toDataURL('image/png');
+          if (!imgData.startsWith('data:image/png;base64,') || imgData.length <= 22) {
+            throw new Error(`Could not encode PDF page ${page + 1}. Please try again.`);
+          }
+          if (page > 0) pdf.addPage();
+          pdf.addImage(imgData, 'PNG', margin, margin, contentWidth, destHeight);
+        } finally {
+          // 长文档逐页释放像素缓冲，避免已写入 PDF 的画布继续占用内存。
+          canvas.width = canvas.height = 0;
+          pageCanvas.width = pageCanvas.height = 0;
+        }
       }
 
       pdf.save(filename);

@@ -3,7 +3,7 @@ const { readFileSync } = require('node:fs');
 const { test } = require('node:test');
 const { JSDOM } = require('jsdom');
 
-async function openEditor(t, source) {
+async function openEditor(t, source, { layoutHeight = 100, failPage = 0, failure = 'empty' } = {}) {
   const html = readFileSync(require.resolve('../index.html'), 'utf8');
   const dom = new JSDOM(html, { url: 'http://localhost/', runScripts: 'outside-only' });
   const { window } = dom;
@@ -14,6 +14,16 @@ async function openEditor(t, source) {
   const rendered = [];
   const copied = [];
   const errors = [];
+  const captures = [];
+  const images = [];
+  const canvases = [];
+  const getBoundingClientRect = window.HTMLElement.prototype.getBoundingClientRect;
+  window.HTMLElement.prototype.getBoundingClientRect = function () {
+    return this.matches('.pdf-export')
+      ? { top: 0, bottom: layoutHeight, left: -9999, width: 793.6875, height: layoutHeight }
+      : getBoundingClientRect.call(this);
+  };
+  window.Range.prototype.getClientRects = () => [];
   Object.assign(window, {
     marked: require('marked'), hljs: require('highlight.js'), jsyaml: require('js-yaml'),
     markedFootnote: require('marked-footnote'), markedGfmHeadingId: require('marked-gfm-heading-id'),
@@ -24,19 +34,35 @@ async function openEditor(t, source) {
     isSecureContext: true,
     alert: message => errors.push(message),
     // JSDOM 不绘制画布；保留真实解析及点击流程，只替换 PDF 绘制和下载。
-    html2canvas: async element => {
+    html2canvas: async (element, options) => {
       rendered.push(element.cloneNode(true));
-      return { width: 800, height: 100 };
+      options.onclone?.(window.document);
+      const canvas = window.document.createElement('canvas');
+      canvas.width = Math.ceil(options.width ?? 793.6875) * options.scale;
+      canvas.height = (options.height ?? layoutHeight) * options.scale;
+      captures.push({ y: options.y ?? 0, width: canvas.width, height: canvas.height });
+      canvases.push(canvas);
+      // 模拟长画布上限；回归到整篇截图时必须失败，不能让替身掩盖空白问题。
+      if (canvas.height > 32767) throw new Error('Canvas height limit exceeded');
+      if (captures.length === failPage) {
+        if (failure === 'transparent') canvas.getContext = () => ({ getImageData: () => ({ data: [0, 0, 0, 0] }) });
+        else if (failure === 'context') canvas.getContext = () => null;
+        else canvas.toDataURL = () => 'data:,';
+      }
+      return canvas;
     },
     jspdf: { jsPDF: class {
       internal = { pageSize: { getWidth: () => 210, getHeight: () => 297 } };
-      addImage() {}
+      addPage() {}
+      addImage(data, format, x, y, width, height) { images.push({ width, height }); }
       save(filename) { downloads.push(filename); }
     } }
   });
   window.document.fonts = { ready: Promise.resolve() };
-  window.HTMLCanvasElement.prototype.getContext = () => ({ drawImage() {} });
-  window.HTMLCanvasElement.prototype.toDataURL = () => 'data:image/png;base64,';
+  window.HTMLCanvasElement.prototype.getContext = () => ({
+    drawImage() {}, getImageData: () => ({ data: [255, 255, 255, 255] })
+  });
+  window.HTMLCanvasElement.prototype.toDataURL = () => 'data:image/png;base64,AA==';
   window.navigator.clipboard = { writeText: async text => copied.push(text) };
   window.console.log = () => {};
   window.localStorage.setItem('markdown-viewer-content', source);
@@ -44,7 +70,48 @@ async function openEditor(t, source) {
   window.eval(readFileSync(require.resolve('../script.js'), 'utf8'));
   window.document.dispatchEvent(new window.Event('DOMContentLoaded'));
   await Promise.resolve();
-  return { window, downloads, rendered, copied, errors };
+  return { window, downloads, rendered, copied, errors, captures, images, canvases };
+}
+
+test('exports a document taller than the canvas limit with bounded, contiguous page captures', async t => {
+  const layoutHeight = 71666;
+  const { window, downloads, errors, captures, images, canvases } = await openEditor(t, '# 长文档', { layoutHeight });
+  window.document.getElementById('export-pdf').click();
+  await new Promise(setImmediate);
+  assert.deepEqual(errors, []);
+  assert.deepEqual(downloads, ['长文档.pdf']);
+  assert.ok(captures.length > 60);
+  assert.equal(images.length, captures.length);
+  let end = 0;
+  for (const capture of captures) {
+    assert.equal(capture.y * 2, end);
+    assert.ok(capture.height > 0 && capture.height <= 2355);
+    assert.equal(capture.width, 1588);
+    end += capture.height;
+  }
+  assert.equal(end, layoutHeight * 2);
+  assert.ok(images.every(image => image.width === 180 && image.height <= 267));
+  assert.ok(canvases.every(canvas => canvas.width === 0 && canvas.height === 0));
+});
+
+for (const failure of ['empty', 'transparent', 'context']) {
+  test(`does not download a partial PDF when a later page has ${failure} output`, async t => {
+    const { window, downloads, errors, captures, canvases } = await openEditor(t, '# 导出失败', {
+      layoutHeight: 4000, failPage: 2, failure
+    });
+    window.console.error = () => {};
+    window.document.getElementById('export-pdf').click();
+    await new Promise(setImmediate);
+    assert.equal(captures.length, 2);
+    assert.deepEqual(downloads, []);
+    assert.equal(errors.length, 1);
+    assert.match(errors[0], /PDF page 2/);
+    assert.ok(canvases.every(canvas => canvas.width === 0 && canvas.height === 0));
+    assert.equal(window.document.querySelector('.pdf-export'), null);
+    assert.equal(window.document.getElementById('export-pdf').disabled, false);
+    assert.equal(window.document.getElementById('mobile-export-pdf').disabled, false);
+    assert.doesNotMatch(window.document.body.textContent, /Download successful|Generating PDF/);
+  });
 }
 
 test('editor and PDF export share title handling while copying preserves source', async t => {
